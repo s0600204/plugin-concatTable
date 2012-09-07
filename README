@@ -4,16 +4,20 @@
  * Can also be used to include and reformat a single table
 
 Usage:
-	{{concat>page1#section|page2#section|...|pageX#section}}
-	{{concat>page1#section|page2#section|...|pageX#section&flag1&flag2&...&flagX}}
-	{{concat>page1#section&flag1&flag2&...&flagX}}
+  {{concattable>page1#section|page2#section|...|pageX#section}}
+  {{concattable>page1#section|page2#section|...|pageX#section&flag1&flag2&...&flagX}}
+  {{concat>page1#section&flag1&flag2&...&flagX}}
 	
 Available Flags:
-	code			formats the table in a way that makes sense for documenting code
-	noheadings		removes all table headings from the entire table
+  code			formats the table in a way that makes sense for documenting code
+  noheadings	removes all table headings from the entire table
 
 
 
 (c) 2012 by s0600204 <dev@s0600204>
 
-Released under the CC-BY-SA 3.0 license (http://creativecommons.org/licenses/by-sa/3.0/)
+	Released under the CC BY-SA 3.0 license
+(http://creativecommons.org/licenses/by-sa/3.0/)
+
+Download link to use in dokuwiki:
+	https://github.com/s0600204/plugin-concatTable/tarball/master

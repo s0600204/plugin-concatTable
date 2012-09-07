@@ -4,8 +4,8 @@
  *		Gets tables from other pages, combines them and outputs the result
  *
  *	Usage:
- *		{{concat>page1#section|page2#section|...|pageX#section}}
- *		{{concat>page1#section|page2#section|...|pageX#section&flags}}
+ *		{{concattable>page1#section|page2#section|...|pageX#section}}
+ *		{{concattable>page1#section|page2#section|...|pageX#section&flags}}
  *
  *	@license	CC-BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0/)
  *	@author		s0600204

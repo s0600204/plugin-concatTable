@@ -1,6 +1,7 @@
-author s0600204
-email  -
-date   2012-09-07
-name   concatanate table plugin
-desc   Gets tables from other pages and combines them into one
-url    -
+base	concatTable
+author	s0600204
+email	-
+date	2012-09-07
+name	Concat Table Plugin
+desc	Gets tables from other pages and combines them into one
+url		https://github.com/s0600204/plugin-concatTable
