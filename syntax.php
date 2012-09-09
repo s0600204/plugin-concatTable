@@ -21,6 +21,8 @@ require_once(DOKU_PLUGIN.'syntax.php');
  *	need to inherit from this class 
  */ 
 class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
+	
+	private $table_count = 0;
     
 	function getType () { return 'substition'; }
 	function getSort () { return 301; }
@@ -71,13 +73,14 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 		
 		foreach ($pages as $page) {
 			resolve_pageid(getNS($ID), $page['page'], $exists);  // resolve shortcuts and clean ID
-			$oldTable = $this->_processPage($page['page'], $page['sect']);
+			$oldTable = $this->_processPage($page['page'], $page['sect'], $flags);
 			if ($rows !== false) {
 				if ($newTable[0][1][0] < $oldTable[1][0]) {  // set col count
 					$newTable[0][1][0] = $oldTable[1][0];
 				}
 				$newTable = array_merge($newTable, $oldTable[0]);
 				$newTable[0][1][1] += $oldTable[1][1];  // update row count
+				$this->table_count++;
 			}
 		}
 		$newTable[] = array('table_close', array(0), 0);
@@ -103,8 +106,9 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 	 *	@return	array	[0] = table data, [1] = table dimensions (cols, rows)
 	 *	@return	boolean	returns false if page does not exist
 	 */
-	function _processPage ($page, $sect) {
+	function _processPage ($page, $sect, $flags) {
 		$keep = 0;
+		$row = 0;
 		$dimens = array();
 		$ins_new = array();
 		
@@ -122,7 +126,8 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 		for ($i=0; $i<$cnt; $i++) {
 			switch ($ins[$i][0]) {
 				case "header":
-					if ($sect === $ins[$i][1][0]) {
+					$check = null;
+					if ($sect === sectionID($ins[$i][1][0], $check)) {
 						$keep = 1;
 					}
 					break;
@@ -131,6 +136,7 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 					if ($keep == 1) {
 						$dimens = $ins[$i][1];
 					}
+					$row = 0;
 					break;
 					
 				case 'table_close':
@@ -140,9 +146,12 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 				case 'section_open':  // required to stop it being written
 					break;
 					
+				case 'tablerow_open':
+					$row++;
 				default:
-					if ($keep == 1) {
-						$ins_new[] = $ins[$i];
+					if ($keep == 1
+						&& ($flags['columns'] == false || $row > 1 || $this->table_count == 0)) {
+							$ins_new[] = $ins[$i];
 					}
 					break;
 			}
@@ -173,35 +182,41 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 					
 				case 'tablecell_open':
 					$col++;
-					if ($flags['code'] == 1) {
+					if ($flags['code'] == true) {
 						switch ($col) {
 							case 1:
 								$table[$i][1][1] = 'right';
 								break;
+							case 2:
+								$table[$i][0] = 'tableheader_open';
 							case 3:
 								$table[$i][1][1] = 'left';
 								break;
-							case 2:
-								$table[$i][0] = 'tableheader_open';
 							default:
 								$table[$i][1][1] = 'center';
 								break;
 						}
 					}
+					if (($flags['columns'] == true && $row == 1) || ($flags['rows'] == true && $col == 1)) {
+						$table[$i][0] = 'tableheader_open';
+						$table[$i][1][1] = 'center';
+					}
 					break;
 					
 				case 'tablecell_close':
-					if ($col == 2 && $flags['code'] == 1) {
-						$table[$i][0] = 'tableheader_close';
+					if (($flags['code'] == true && $col == 2)
+						|| ($flags['columns'] == true && $row == 1)
+						|| ($flags['rows'] == true && $col == 1)) {
+							$table[$i][0] = 'tableheader_close';
 					}
 					break;
 					
 				case 'tableheader_open':
 					$col++;
-					if ($flags['th-rem'] == 1) {
+					if ($flags['th-rem'] == true) {
 						$table[$i][0] = 'tablecell_open';
 					}
-					if ($flags['code'] == 1) {
+					if ($flags['code'] == true) {
 						if ($col != 2) {
 							$table[$i][0] = 'tablecell_open';
 						}
@@ -209,6 +224,7 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 							case 1:
 								$table[$i][1][1] = 'right';
 								break;
+							case 2:
 							case 3:
 								$table[$i][1][1] = 'left';
 								break;
@@ -217,14 +233,29 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 								break;
 						}
 					}
+					
+					if ($flags['columns'] == true || $flags['rows'] == true) {
+						if (($col > 1 && $row > 1)
+							|| ($row == 1 && $flags['columns'] == false)
+							|| ($col == 1 && $flags['rows'] == false)) {
+								$table[$i][0] = 'tablecell_open';
+						}
+					}
 					break;
 					
 				case 'tableheader_close':
-					if ($flags['th-rem'] == 1) {
+					if ($flags['th-rem'] == true) {
 						$table[$i][0] = 'tablecell_close';
 					}
-					if ($flags['code'] == 1 && $col != 2) {
+					if ($flags['code'] == true && $col != 2) {
 						$table[$i][0] = 'tablecell_close';
+					}
+					if ($flags['columns'] == true || $flags['rows'] == true) {
+						if (($col > 1 && $row > 1)
+							|| ($row == 1 && $flags['columns'] == false)
+							|| ($col == 1 && $flags['rows'] == false)) {
+								$table[$i][0] = 'tablecell_close';
+						}
 					}
 					break;
 					
@@ -242,17 +273,36 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 	function _setflags($setflags) {
 		
 		$flags = array(
-				'code' => 0,
-				'th-rem' => 0
+				'code' => false,
+				'collapse' => false,
+				'columns' => false,
+				'rows' => false,
+				'sort' => 0,
+				'th-rem' => false
 			);
 		
 		foreach ($setflags as $flag) {
 			switch ($flag) {
 				case 'code':
-					$flags['code'] = 1;
+					$flags['code'] = true;
+					$flags['collapse'] = true;
+					$flags['sort'] = 2;
+					$flags['columns'] = false;
+					$flags['rows'] = false;
 					break;
 				case 'noheadings':
-					$flags['th-rem'] = 1;
+					$flags['th-rem'] = true;
+					break;
+				case 'columns':
+					$flags['columns'] = true;
+					$flags['code'] = false;
+					break;
+				case 'rows':
+					$flags['rows'] = true;
+					$flags['code'] = false;
+					break;
+				case 'sort':
+					$flags['sort']++;
 					break;
 			}
 		}
