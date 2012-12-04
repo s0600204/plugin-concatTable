@@ -171,6 +171,14 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 		$row = 0;
 		$coll = 0;
 		
+		if ($flags['sort'] > 0) {
+			if ($flags['rSort'] == 'true') {
+				$table = $this->_rsort($table, $flags['sort']);
+			} else {
+				$table = $this->_sort($table, $flags['sort']);
+			}
+		}
+		
 		// process table
 		$cnt = count($table);
 		for ($i=0; $i<$cnt; $i++) {
@@ -278,6 +286,7 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 				'columns' => false,
 				'rows' => false,
 				'sort' => 0,
+				'rSort' => false,
 				'th-rem' => false
 			);
 		
@@ -301,6 +310,8 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 					$flags['rows'] = true;
 					$flags['code'] = false;
 					break;
+				case 'rsort':
+					$flags['rSort'] = true;
 				case 'sort':
 					$flags['sort']++;
 					break;
@@ -308,5 +319,93 @@ class syntax_plugin_concatTable extends DokuWiki_Syntax_Plugin {
 		}
 		
 		return $flags;
+	}
+	
+	/**
+	 *	Sorts the table (crudely)
+	 */
+	function _sort($table, $sort) {
+		
+		$loop = 1;
+		
+		// sort table
+		$cnt = count($table);
+		while ($loop) {
+			$table_new = array();
+			$row_curr = array();
+			$row_last = "";
+			$cell_no = 0;
+			$row_no = 0;
+			$val_cur = "";
+			$val_last = "";
+			$loop = 0;
+			for ($i=0; $i<$cnt; $i++) {
+				switch ($table[$i][0]) {
+					case "table_close":
+						// print out the very last row in table
+						$table_new = array_merge($table_new, $row_last);
+					case "table_open":
+						$table_new[] = $table[$i];
+						break;
+						
+					case "tablerow_open":
+						$row_curr[] = $table[$i];
+						$row_no++;
+						$cell_no = 0;
+						break;
+						
+					case "tablecell_open":
+					case "tableheader_open":
+						$cell_no++;
+						$row_curr[] = $table[$i];
+						break;
+						
+					case "cdata":
+						$row_curr[] = $table[$i];
+						if ($cell_no == $sort) {
+							// acquire value for this row
+							$val_curr = trim($table[$i][1][0]);
+						}
+						break;
+					
+					case "tablecell_close":
+					case "tableheader_close":
+						$row_curr[] = $table[$i];
+						break;
+					
+					case "tablerow_close":
+						$row_curr[] = $table[$i];
+						if (is_array($row_last)) {
+							// compare this row's value with last row's value
+							if ($val_last > $val_curr) {
+								$loop = 1;
+								$table_new = array_merge($table_new, $row_curr);
+								// (keep the last row in buffer)
+							} else {
+								$table_new = array_merge($table_new, $row_last);
+								$row_last = $row_curr;
+								$val_last = $val_curr;
+							}
+						} else {
+							$row_last = $row_curr;
+							$val_last = $val_curr;
+						}
+						$row_curr = array();
+						error_log("(" . $loop . ")\n", 3, "render.txt");
+						break;
+				}
+			}
+			$table = $table_new;
+		}
+		
+		return $table;
+	}
+	
+	/**
+	 *	Reverse sorts the table
+	 */
+	function _rsort($table, $sort) {
+		$table = _sort($table, $sort);
+		return array_reversed($table);
 	}
 }
